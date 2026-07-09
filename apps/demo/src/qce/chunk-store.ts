@@ -189,14 +189,31 @@ export class ChunkStore {
     // Payloads self-identify by chunk id, so loads can run fully in parallel:
     // the shared JSONP callback dispatches to the matching per-chunk resolver.
     const p: Promise<QceRecord[]> = (async () => {
-      const done = new Promise<QceRecord[]>((r) => {
-        this.resolvers.set(meta.id, (c) => {
-          this.resolvers.delete(meta.id);
-          r(c.messages);
-        });
-      });
-      await loadScript(`${this.baseUrl}/${meta.file}`);
-      const messages = await done;
+      let messages: QceRecord[] | null = null;
+      for (let attempt = 0; attempt < 3 && !messages; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 400 * attempt));
+        try {
+          const done = new Promise<QceRecord[]>((r, rej) => {
+            this.resolvers.set(meta.id, (c) => {
+              this.resolvers.delete(meta.id);
+              r(c.messages);
+            });
+            setTimeout(() => {
+              this.resolvers.delete(meta.id);
+              rej(new Error(`chunk ${meta.id} timed out`));
+            }, 20_000);
+          });
+          await loadScript(`${this.baseUrl}/${meta.file}`);
+          messages = await done;
+        } catch {
+          messages = null;
+        }
+      }
+      if (!messages) {
+        // Re-render so visible skeletons re-request the chunk.
+        this.onChunkLoaded?.();
+        throw new Error(`failed to load chunk ${meta.id}`);
+      }
       this.cache.set(chunk, messages);
       this.loadedCount += 1;
       while (this.cache.size > LRU_CAPACITY) {

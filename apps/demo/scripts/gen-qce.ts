@@ -9,7 +9,7 @@ import { messageBrief, messageMeta, messageText, renderChatMessage } from '../sr
 import { BloomFilter } from '../src/qce/bloom.js';
 
 const TOTAL = 50_000;
-const PER_CHUNK = 2_000;
+const PER_CHUNK = 500;
 const TEXT_BITS = 16_384;
 const TEXT_HASHES = 6;
 const SENDER_BITS = 2_048;

@@ -890,27 +890,32 @@ function SettingsDialog({
   onChange: (s: QceSettings) => void;
   onClose: () => void;
 }): React.ReactElement | null {
+  const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (open) {
+      setMounted(true);
+      let raf2 = 0;
+      const raf = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setVisible(true));
+      });
+      const onKey = (e: KeyboardEvent): void => {
+        if (e.key === 'Escape') onClose();
+      };
+      window.addEventListener('keydown', onKey);
+      return () => {
+        cancelAnimationFrame(raf);
+        cancelAnimationFrame(raf2);
+        window.removeEventListener('keydown', onKey);
+      };
+    }
     setVisible(false);
-    let raf2 = 0;
-    const raf = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setVisible(true));
-    });
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      cancelAnimationFrame(raf);
-      cancelAnimationFrame(raf2);
-      window.removeEventListener('keydown', onKey);
-    };
+    const t = window.setTimeout(() => setMounted(false), 220);
+    return () => window.clearTimeout(t);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!mounted) return null;
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
