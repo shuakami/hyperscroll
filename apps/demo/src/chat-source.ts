@@ -157,17 +157,28 @@ const POLLS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['Bubble corner radius?', ['12px', '16px', 'Full pill']],
 ];
  
-const VIDEOS: ReadonlyArray<readonly [string, string]> = [
-  ['0:42', 'screen-recording-scroll-test'],
-  ['1:37', 'benchmark-run-300k'],
-  ['0:15', 'jitter-repro-before-fix'],
-  ['2:05', 'demo-walkthrough'],
+// [duration, base name, playable sample mp4]
+const VIDEOS: ReadonlyArray<readonly [string, string, string]> = [
+  ['0:42', 'screen-recording-scroll-test', 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4'],
+  ['1:37', 'benchmark-run-300k', 'https://test-videos.co.uk/vids/sintel/mp4/h264/360/Sintel_360_10s_1MB.mp4'],
+  ['0:15', 'jitter-repro-before-fix', 'https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4'],
+  ['2:05', 'demo-walkthrough', 'https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_2MB.mp4'],
 ];
+
+// Twemoji codepoints rendered as sticker messages (SVG assets via CDN).
+const STICKERS: readonly string[] = [
+  '1f602', '1f60d', '1f923', '1f44d', '1f389', '1f525', '1f649', '1f979', '1f4af', '1f921',
+];
+
+function stickerUrl(code: string): string {
+  return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/${code}.svg`;
+}
  
 export type MessageKind =
   | 'sys'
   | 'text'
   | 'img'
+  | 'sticker'
   | 'voice'
   | 'code'
   | 'file'
@@ -210,8 +221,15 @@ export function messageMeta(i: number): MessageMeta {
     const text = makeText(r);
     return { kind: 'text', user: u[0], userColor: u[1], text: quoteText ? `${quoteText} ${text}` : text, html: `<div class="bubble">${quote}${text}</div>` };
   }
-  if (t < 0.72) {
+  if (t < 0.69) {
     return { kind: 'img', user: u[0], userColor: u[1], text: '', html: `<div class="bubble img-bubble">${realImg(r)}</div>` };
+  }
+  if (t < 0.72) {
+    const code = pick(STICKERS, r);
+    return {
+      kind: 'sticker', user: u[0], userColor: u[1], text: '',
+      html: `<div class="sticker-wrap"><img class="sticker" loading="lazy" width="110" height="110" data-code="${code}" src="${stickerUrl(code)}" alt="sticker"/></div>`,
+    };
   }
   if (t < 0.78) {
     const sec = (2 + r() * 40) | 0;
@@ -225,7 +243,9 @@ export function messageMeta(i: number): MessageMeta {
       kind: 'voice', user: u[0], userColor: u[1], text,
       html:
         `<button type="button" class="bubble voice-bubble" data-sec="${sec}" data-seed="${seed}" aria-label="Play voice message, ${sec} seconds">` +
-        `<span class="vplay"></span><span class="vbars">${bars}</span><span class="vsec">${sec}″</span></button>`,
+        `<span class="vplay"></span><span class="vbars">${bars}</span><span class="vsec">${sec}″</span>` +
+        `<span class="vdl" role="button" aria-label="Download voice message" title="Download">` +
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="3" y2="15"/></svg></span></button>`,
     };
   }
   if (t < 0.83) {
@@ -256,7 +276,7 @@ export function messageMeta(i: number): MessageMeta {
     return {
       kind: 'video', user: u[0], userColor: u[1], text: v[1],
       html:
-        `<div class="bubble video-bubble">` +
+        `<div class="bubble video-bubble" data-mp4="${v[2]}">` +
         `<img class="img" loading="lazy" width="300" height="170" src="https://picsum.photos/seed/${seed}/300/170" alt="video"/>` +
         `<span class="vbadge"><i class="vtri"></i>${v[0]}</span>` +
         `<span class="vname">${esc(v[1])}.mp4</span></div>`,
@@ -321,7 +341,11 @@ export function messageText(i: number): string {
     const text = makeText(r);
     return quoteText ? `${quoteText} ${text}` : text;
   }
-  if (t < 0.72) return '';
+  if (t < 0.69) return '';
+  if (t < 0.72) {
+    pick(STICKERS, r);
+    return '';
+  }
   if (t < 0.78) return `Voice message ${(2 + r() * 40) | 0}s`;
   if (t < 0.83) return pick(SNIPPETS, r);
   if (t < 0.87) return pick(FILES, r)[0];
@@ -350,10 +374,12 @@ export function messageBrief(i: number): { kind: MessageKind; user: string } {
   const kind: MessageKind =
     t < 0.6
       ? 'text'
-      : t < 0.72
+      : t < 0.69
         ? 'img'
-        : t < 0.78
-          ? 'voice'
+        : t < 0.72
+          ? 'sticker'
+          : t < 0.78
+            ? 'voice'
           : t < 0.83
             ? 'code'
             : t < 0.87

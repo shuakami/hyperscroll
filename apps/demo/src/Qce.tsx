@@ -4,9 +4,11 @@ import { FilteredDataSource, HyperScroll } from '@hyperscroll/core';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  MoonIcon,
   MoveRightIcon,
   PanelLeftIcon,
   SearchIcon,
+  SunIcon,
   XIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,7 +25,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { Loader } from '@/components/ui/loader';
 import { MediaPreview, type MediaItem } from '@/components/ui/media-preview';
+import { toggleVoice } from './voice-player';
 import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 
 const BASE_URL = './qce-demo';
@@ -32,6 +36,7 @@ const QCE_REPO = 'https://github.com/shuakami/qq-chat-exporter';
 const KIND_OPTIONS: ReadonlyArray<readonly [string, string]> = [
   ['text', 'Text'],
   ['img', 'Images'],
+  ['sticker', 'Stickers'],
   ['voice', 'Voice'],
   ['video', 'Videos'],
   ['file', 'Files'],
@@ -183,33 +188,78 @@ export default function Qce(): React.ReactElement {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadedChunks, setLoadedChunks] = useState(0);
   const [preview, setPreview] = useState<MediaItem | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [dark, setDark] = useState(
+    () =>
+      document.documentElement.classList.contains('dark') ||
+      (localStorage.getItem('qce-theme') === null &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+      localStorage.getItem('qce-theme') === 'dark',
+  );
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', dark);
+    localStorage.setItem('qce-theme', dark ? 'dark' : 'light');
+  }, [dark]);
 
   function onViewportClick(e: React.MouseEvent): void {
     const target = e.target as HTMLElement;
     const voice = target.closest('.voice-bubble');
-    if (voice) {
+    if (voice instanceof HTMLElement) {
       const sec = Number(voice.getAttribute('data-sec') ?? 3);
       const seed = Number(voice.getAttribute('data-seed') ?? 1);
-      const url = URL.createObjectURL(voiceWav(sec, seed));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `voice-${seed}.wav`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (target.closest('.vdl')) {
+        const url = URL.createObjectURL(voiceWav(sec, seed));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `voice-${seed}.wav`;
+        a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+      toggleVoice(voice);
       return;
     }
     const videoBubble = target.closest('.video-bubble');
     if (videoBubble) {
       const img = videoBubble.querySelector('img');
-      if (!img) return;
+      const mp4 = videoBubble.getAttribute('data-mp4');
+      if (!mp4) return;
       const name = videoBubble.querySelector('.vname')?.textContent ?? 'video.mp4';
-      setPreview({ type: 'video', src: fullSizeSrc(img.src), name });
+      setPreview({ type: 'video', src: mp4, name, thumb: img?.src });
+      return;
+    }
+    const fileBubble = target.closest('.file-bubble');
+    if (fileBubble) {
+      const fname = fileBubble.querySelector('.fname')?.textContent ?? 'file.bin';
+      const fsize = fileBubble.querySelector('.fsize')?.textContent ?? '';
+      const blob = new Blob(
+        [`Demo export attachment\nname: ${fname}\nsize: ${fsize}\n`],
+        { type: 'application/octet-stream' },
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const sticker = target.closest('img.sticker');
+    if (sticker instanceof HTMLImageElement) {
+      const code = sticker.getAttribute('data-code') ?? 'sticker';
+      setPreview({ type: 'image', src: sticker.src, name: `sticker-${code}.svg`, thumb: sticker.src });
       return;
     }
     const img = target.closest('img.img');
     if (img instanceof HTMLImageElement) {
       const seed = img.src.match(/seed\/(\d+)/)?.[1] ?? 'image';
-      setPreview({ type: 'image', src: fullSizeSrc(img.src), name: `image-${seed}.jpg` });
+      setPreview({
+        type: 'image',
+        src: fullSizeSrc(img.src),
+        name: `image-${seed}.jpg`,
+        thumb: img.src,
+      });
     }
   }
 
@@ -290,6 +340,7 @@ export default function Qce(): React.ReactElement {
   function resetSearch(): void {
     if (searchRef.current) searchRef.current.cancelled = true;
     searchRef.current = null;
+    setSearching(false);
     setSearchStatus('');
     setCanNav(false);
     setCanClear(false);
@@ -382,6 +433,7 @@ export default function Qce(): React.ReactElement {
     resetSearch();
     if (!q) return;
     setCanClear(true);
+    setSearching(true);
     highlightRef.current = q;
     engine.refresh();
     const s: SearchState = {
@@ -423,14 +475,16 @@ export default function Qce(): React.ReactElement {
           firstJump = false;
           setCanNav(true);
           jumpToMatch(0);
-        } else if (s.cursor < 0) {
+        } else {
+          const pos = s.cursor >= 0 ? `${(s.cursor + 1).toLocaleString()} of ` : '';
           setSearchStatus(
-            `Searching chunk ${c + 1} of ${store.manifest.chunks.length}, ${s.matches.length.toLocaleString()} matches, ${s.chunksSkipped} skipped`,
+            `${pos}${s.matches.length.toLocaleString()} matches, chunk ${c + 1} of ${store.manifest.chunks.length}, ${s.chunksSkipped} skipped`,
           );
         }
       }
       if (s.cancelled) return;
       s.running = false;
+      setSearching(false);
       const ms = performance.now() - t0;
       if (s.matches.length === 0) {
         setSearchStatus(
@@ -453,14 +507,7 @@ export default function Qce(): React.ReactElement {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <a href="./" className="block leading-tight">
-          <span className="block font-semibold text-[15px] italic tracking-tight">QCE Viewer</span>
-          <span className="mt-0.5 block text-[11px] text-muted-foreground italic tracking-wide">
-            powered by <span className="text-foreground/70">HyperScroll</span>
-          </span>
-        </a>
-
-        <div className="mt-6">
+        <div>
           <div className="font-semibold text-base tracking-tight">{chat?.name ?? 'Loading…'}</div>
           {chat ? <div className="mt-0.5 text-muted-foreground text-xs">{chat.type} chat export</div> : null}
         </div>
@@ -516,6 +563,11 @@ export default function Qce(): React.ReactElement {
                     if (e.key === 'Enter') runSearch();
                   }}
                 />
+                {searching ? (
+                  <InputGroupAddon align="inline-end">
+                    <Loader className="text-muted-foreground" />
+                  </InputGroupAddon>
+                ) : null}
               </InputGroup>
               <div className="mt-2 flex items-center gap-1.5">
                 <Button size="sm" onClick={runSearch}>
@@ -626,10 +678,23 @@ export default function Qce(): React.ReactElement {
             <GithubMark className="size-3.5" />
             shuakami/qq-chat-exporter
           </a>
-          <div className="flex items-center gap-1.5">
-            <RustMark className="size-3.5" />
-            exporter {manifest?.exporter?.version ?? ''}
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="flex items-center gap-1.5">
+              <RustMark className="size-3.5" />
+              exporter {manifest?.exporter?.version ?? ''}
+            </span>
+            <button
+              type="button"
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setDark((v) => !v)}
+            >
+              {dark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
+            </button>
           </div>
+          <a href="./" className="block hover:text-foreground">
+            QCE Viewer powered by <span className="italic">HyperScroll</span>
+          </a>
         </div>
       </aside>
 

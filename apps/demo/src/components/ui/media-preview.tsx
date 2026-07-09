@@ -1,13 +1,14 @@
-'use client';
-
 import { DownloadIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
+import { Loader } from '@/components/ui/loader';
 
 export interface MediaItem {
   type: 'image' | 'video';
   src: string;
   name: string;
+  /** Low-res thumbnail shown blurred while the full media loads. */
+  thumb?: string;
 }
 
 export async function downloadUrl(src: string, name: string): Promise<void> {
@@ -34,10 +35,12 @@ export function MediaPreview({
 }): React.ReactElement | null {
   const [current, setCurrent] = React.useState<MediaItem | null>(null);
   const [visible, setVisible] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
     if (item) {
       setCurrent(item);
+      setLoaded(false);
       const raf = requestAnimationFrame(() => setVisible(true));
       return () => cancelAnimationFrame(raf);
     }
@@ -97,39 +100,54 @@ export function MediaPreview({
         style={{
           transform: visible ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(10px)',
           opacity: visible ? 1 : 0,
-          transition:
-            'transform 480ms cubic-bezier(0.34, 1.28, 0.5, 1), opacity 220ms ease',
+          transition: 'transform 480ms cubic-bezier(0.34, 1.28, 0.5, 1), opacity 220ms ease',
         }}
       >
-        {current.type === 'video' ? (
-          <div className="pointer-events-auto relative overflow-hidden rounded-xl">
+        <div className="pointer-events-auto relative overflow-hidden rounded-xl">
+          {!loaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              {current.thumb ? (
+                <img
+                  src={current.thumb}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 size-full scale-110 object-cover blur-xl"
+                  draggable={false}
+                />
+              ) : (
+                <div className="absolute inset-0 bg-white/[0.06]" />
+              )}
+              <Loader size={22} className="relative text-white/80" />
+            </div>
+          )}
+          {current.type === 'video' ? (
+            <video
+              key={current.src}
+              src={current.src}
+              poster={current.thumb}
+              controls
+              autoPlay
+              playsInline
+              onLoadedData={() => setLoaded(true)}
+              className={`max-h-[74vh] max-w-[90vw] min-h-[220px] min-w-[320px] bg-black object-contain transition-opacity duration-300 ${
+                loaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <track kind="captions" />
+            </video>
+          ) : (
             <img
+              key={current.src}
               src={current.src}
               alt={current.name}
-              className="max-h-[78vh] max-w-[90vw] object-contain"
+              onLoad={() => setLoaded(true)}
               draggable={false}
+              className={`max-h-[74vh] max-w-[90vw] min-h-[180px] min-w-[240px] object-contain transition-opacity duration-300 ${
+                loaded ? 'opacity-100' : 'opacity-0'
+              }`}
             />
-            <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex size-14 items-center justify-center rounded-full bg-black/56 backdrop-blur-sm">
-                <span
-                  className="ml-1"
-                  style={{
-                    borderTop: '9px solid transparent',
-                    borderBottom: '9px solid transparent',
-                    borderLeft: '14px solid white',
-                  }}
-                />
-              </span>
-            </span>
-          </div>
-        ) : (
-          <img
-            src={current.src}
-            alt={current.name}
-            className="pointer-events-auto max-h-[78vh] max-w-[90vw] rounded-xl object-contain"
-            draggable={false}
-          />
-        )}
+          )}
+        </div>
         <figcaption className="text-[13px] text-white/72">{current.name}</figcaption>
       </figure>
     </div>
