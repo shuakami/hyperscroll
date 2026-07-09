@@ -1,0 +1,52 @@
+{
+  "name": "@hyperscroll/core",
+  "version": "0.1.0",
+  "description": "Anchor-driven virtualization engine for 10M+ dynamic-height items in a single scroll view. Zero dependencies, framework-agnostic, CSS/Tailwind compatible.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "virtual-scroll",
+    "virtualization",
+    "virtual-list",
+    "infinite-scroll",
+    "infinite-list",
+    "windowing",
+    "dynamic-height",
+    "chat",
+    "chat-history",
+    "log-viewer",
+    "performance",
+    "zero-dependency"
+  ],
+  "license": "MIT",
+  "author": "shuakami",
+  "homepage": "https://shuakami.github.io/hyperscroll/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shuakami/hyperscroll.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/shuakami/hyperscroll/issues"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.1",
+    "tsup": "^8.2.4",
+    "vitest": "^2.0.5"
+  }
+}

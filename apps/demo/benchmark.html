@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperScroll vs TanStack Virtual — Benchmark</title>
+  <meta name="description" content="Live head-to-head benchmark: HyperScroll vs TanStack Virtual on the identical dynamic-height chat data source — FPS, rebuild time and memory." />
+  <meta property="og:title" content="HyperScroll vs TanStack Virtual — Benchmark" />
+  <meta property="og:description" content="Live head-to-head benchmark on identical dynamic-height data." />
+  <meta property="og:type" content="website" />
+</head>
+<body class="bench-page">
+  <header class="bench-header">
+    <div class="logo">HyperScroll <span>Benchmark</span></div>
+    <div class="count">Same dynamic-height chat data source, scripted 5s constant scroll + random jumps</div>
+    <div class="jump">
+      <a class="bench" href="./index.html">Demo</a>
+      <select id="benchCount">
+        <option value="100000">100,000 rows</option>
+        <option value="300000" selected>300,000 rows</option>
+        <option value="1000000">1,000,000 rows</option>
+        <option value="30000000">30,000,000 rows</option>
+      </select>
+      <button id="btnRun">Run benchmark</button>
+    </div>
+  </header>
+  <div class="bench-grid">
+    <section>
+      <h2>@hyperscroll/core</h2>
+      <div class="pane" id="paneHyper"></div>
+    </section>
+    <section>
+      <h2>@tanstack/virtual-core (dynamic measure)</h2>
+      <div class="pane" id="paneTanstack"></div>
+    </section>
+  </div>
+  <div id="results"><em>Click "Run benchmark" — both engines execute the same script: constant scroll for 5s (+18px per frame) → 10 random jumps.</em></div>
+  <script type="module" src="/src/benchmark.ts"></script>
+</body>
+</html>
