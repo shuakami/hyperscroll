@@ -76,10 +76,6 @@ export default function Qce(): React.ReactElement {
   const searchRef = useRef<SearchState | null>(null);
   const filterRunRef = useRef(0);
 
-  const hudIdx = useRef<HTMLElement>(null);
-  const hudChunks = useRef<HTMLElement>(null);
-  const hudCache = useRef<HTMLElement>(null);
-  const hudBloom = useRef<HTMLElement>(null);
 
   const [manifest, setManifest] = useState<QceManifest | null>(null);
   const [filterSender, setFilterSender] = useState('');
@@ -132,15 +128,10 @@ export default function Qce(): React.ReactElement {
     const engine = new HyperScroll(el, {
       dataSource: withHighlight(fullSource),
       keyboard: true,
-      onAnchorChange(anchor) {
-        if (hudIdx.current) hudIdx.current.textContent = `#${anchor.index.toLocaleString()}`;
-      },
     });
     engineRef.current = engine;
     let refreshQueued = false;
     store.onChunkLoaded = () => {
-      if (hudChunks.current) hudChunks.current.textContent = String(store.loadedCount);
-      if (hudCache.current) hudCache.current.textContent = String(store.cacheSize());
       setLoadedChunks(store.loadedCount);
       if (refreshQueued) return;
       refreshQueued = true;
@@ -285,8 +276,6 @@ export default function Qce(): React.ReactElement {
           if (sender && r.nameLower !== sender) continue;
           if (r.text.toLowerCase().includes(q)) s.matches.push(base + k);
         }
-        if (hudBloom.current)
-          hudBloom.current.textContent = `${s.chunksSkipped} skipped / ${s.chunksScanned} scanned`;
         if (s.matches.length > 0 && firstJump) {
           firstJump = false;
           setCanNav(true);
@@ -363,9 +352,25 @@ export default function Qce(): React.ReactElement {
               </div>
             </dl>
 
-            {filterStatus ? (
-              <div className="mt-4 text-muted-foreground text-xs">{filterStatus}</div>
-            ) : null}
+            <div className="mt-8">
+              <div className="font-medium text-muted-foreground text-xs">Filter</div>
+              <Select value={filterSender} onValueChange={(v) => applyFilter(v ?? '')}>
+                <SelectTrigger size="sm" className="mt-2 w-full">
+                  <SelectValue>{filterSender || 'All senders'}</SelectValue>
+                </SelectTrigger>
+                <SelectPopup>
+                  <SelectItem value="">All senders</SelectItem>
+                  {manifest.senders.map((sd) => (
+                    <SelectItem key={sd.uid} value={sd.displayName}>
+                      {sd.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectPopup>
+              </Select>
+              {filterStatus ? (
+                <div className="mt-2 text-muted-foreground text-xs">{filterStatus}</div>
+              ) : null}
+            </div>
           </>
         ) : null}
 
@@ -415,22 +420,6 @@ export default function Qce(): React.ReactElement {
           <Button size="sm" onClick={runSearch}>
             Search
           </Button>
-          <Select
-            value={filterSender}
-            onValueChange={(v) => applyFilter(v ?? '')}
-          >
-            <SelectTrigger size="sm" className="w-32 min-w-0 sm:w-36">
-              <SelectValue>{filterSender || 'All senders'}</SelectValue>
-            </SelectTrigger>
-            <SelectPopup>
-              <SelectItem value="">All senders</SelectItem>
-              {(manifest?.senders ?? []).map((sd) => (
-                <SelectItem key={sd.uid} value={sd.displayName}>
-                  {sd.displayName}
-                </SelectItem>
-              ))}
-            </SelectPopup>
-          </Select>
           <Button
             variant="outline"
             size="icon-sm"
@@ -466,21 +455,6 @@ export default function Qce(): React.ReactElement {
         <div className="relative min-h-0 flex-1">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
           <div id="viewport" ref={viewportRef} className="qce-viewport h-full" />
-        </div>
-
-        <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded-xl bg-popover/90 p-2 font-mono text-[10px] text-muted-foreground leading-relaxed backdrop-blur sm:right-4 sm:bottom-4 sm:min-w-52 sm:p-3 sm:text-xs">
-          <div>
-            Current message <b className="font-semibold text-foreground" ref={hudIdx}>0</b>
-          </div>
-          <div>
-            Chunk loads <b className="font-semibold text-foreground" ref={hudChunks}>0</b>
-          </div>
-          <div>
-            LRU cache <b className="font-semibold text-foreground" ref={hudCache}>0</b>
-          </div>
-          <div>
-            Bloom <b className="font-semibold text-foreground" ref={hudBloom}>-</b>
-          </div>
         </div>
       </div>
     </div>
