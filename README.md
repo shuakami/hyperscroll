@@ -1,5 +1,3 @@
-# HyperScroll
-
 [![banner](https://raw.githubusercontent.com/shuakami/hyperscroll/main/docs/banner.png)](https://shuakami.github.io/hyperscroll/)
 
 Anchor-driven virtualization engine for tens of millions of dynamic-height items in a single scroll view. Zero dependencies, framework-agnostic, constant memory, 60 FPS.
