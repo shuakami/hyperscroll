@@ -177,23 +177,35 @@ function stickerUrl(code: string): string {
 // Meme-style image stickers bundled with the demo (relative to the page URL).
 const IMG_STICKERS: readonly string[] = ['stickers/cat-plead.jpg'];
 
-// File-type badge: extension label + accent color, keyed by extension.
-const FILE_KINDS: Readonly<Record<string, readonly [string, string]>> = {
-  csv: ['CSV', '#33a852'],
-  zip: ['ZIP', '#e08b3a'],
-  json: ['JSON', '#a24fd0'],
-  html: ['HTML', '#e0536e'],
-  tgz: ['TGZ', '#e08b3a'],
-  heapsnapshot: ['HEAP', '#5470e0'],
-  log: ['LOG', '#2aa7b8'],
-  pdf: ['PDF', '#e0536e'],
-  mp4: ['MP4', '#7a6ff0'],
+// File-type icon paths (lucide outline shapes), keyed by extension.
+const ICON_ARCHIVE = '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>';
+const ICON_TEXT = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>';
+const ICON_BRACES = '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>';
+const ICON_GLOBE = '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>';
+const ICON_TABLE = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>';
+const ICON_ACTIVITY = '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>';
+const ICON_FILE = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>';
+const ICON_VIDEO = '<path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/>';
+
+const FILE_ICONS: Readonly<Record<string, string>> = {
+  zip: ICON_ARCHIVE,
+  tgz: ICON_ARCHIVE,
+  log: ICON_TEXT,
+  txt: ICON_TEXT,
+  json: ICON_BRACES,
+  html: ICON_GLOBE,
+  csv: ICON_TABLE,
+  heapsnapshot: ICON_ACTIVITY,
+  mp4: ICON_VIDEO,
 };
 
 function fileBadge(name: string): string {
   const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
-  const [label, color] = FILE_KINDS[ext] ?? ['FILE', '#8a8a8a'];
-  return `<span class="ficon" style="background:color-mix(in srgb, ${color} 14%, transparent);color:${color}">${label}</span>`;
+  const paths = FILE_ICONS[ext] ?? ICON_FILE;
+  return (
+    `<span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+    `stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></span>`
+  );
 }
  
 export type MessageKind =

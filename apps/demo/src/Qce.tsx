@@ -4,11 +4,24 @@ import { FilteredDataSource, HyperScroll } from '@hyperscroll/core';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BarChart3Icon,
+  CodeIcon,
+  FileIcon,
+  ImageIcon,
+  LayersIcon,
+  LinkIcon,
+  MapPinIcon,
+  MicIcon,
   MoonIcon,
   MoveRightIcon,
   PanelLeftIcon,
   SearchIcon,
+  SettingsIcon,
+  SmileIcon,
   SunIcon,
+  TypeIcon,
+  UserRoundIcon,
+  VideoIcon,
   XIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,19 +47,36 @@ import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 const BASE_URL = './qce-demo';
 const QCE_REPO = 'https://github.com/shuakami/qq-chat-exporter';
 
-const KIND_OPTIONS: ReadonlyArray<readonly [string, string]> = [
-  ['text', 'Text'],
-  ['img', 'Images'],
-  ['sticker', 'Stickers'],
-  ['voice', 'Voice'],
-  ['video', 'Videos'],
-  ['file', 'Files'],
-  ['link', 'Links'],
-  ['code', 'Code'],
-  ['poll', 'Polls'],
-  ['location', 'Locations'],
-  ['contact', 'Contacts'],
+type IconComponent = React.ComponentType<{ className?: string }>;
+
+const KIND_OPTIONS: ReadonlyArray<readonly [string, string, IconComponent]> = [
+  ['text', 'Text', TypeIcon],
+  ['img', 'Images', ImageIcon],
+  ['sticker', 'Stickers', SmileIcon],
+  ['voice', 'Voice', MicIcon],
+  ['video', 'Videos', VideoIcon],
+  ['file', 'Files', FileIcon],
+  ['link', 'Links', LinkIcon],
+  ['code', 'Code', CodeIcon],
+  ['poll', 'Polls', BarChart3Icon],
+  ['location', 'Locations', MapPinIcon],
+  ['contact', 'Contacts', UserRoundIcon],
 ];
+
+interface QceSettings {
+  rememberScroll: boolean;
+  prefetchChunks: boolean;
+}
+
+const DEFAULT_SETTINGS: QceSettings = { rememberScroll: false, prefetchChunks: false };
+
+function loadSettings(): QceSettings {
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem('qce-settings') ?? '{}') };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
 
 interface Filters {
   sender: string;
@@ -203,6 +233,9 @@ export default function Qce(): React.ReactElement {
   const [loadedChunks, setLoadedChunks] = useState(0);
   const [preview, setPreview] = useState<MediaItem | null>(null);
   const [searching, setSearching] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<QceSettings>(loadSettings);
+  const settingsRef = useRef(settings);
   const [dark, setDark] = useState(
     () =>
       document.documentElement.classList.contains('dark') ||
@@ -215,6 +248,11 @@ export default function Qce(): React.ReactElement {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('qce-theme', dark ? 'dark' : 'light');
   }, [dark]);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+    localStorage.setItem('qce-settings', JSON.stringify(settings));
+  }, [settings]);
 
   function onViewportClick(e: React.MouseEvent): void {
     const target = e.target as HTMLElement;
@@ -331,7 +369,24 @@ export default function Qce(): React.ReactElement {
       });
     };
 
+    if (settingsRef.current.rememberScroll) {
+      const saved = Number(localStorage.getItem('qce-scroll') ?? -1);
+      if (saved > 0 && saved < manifest.stats.totalMessages) engine.scrollToIndex(saved);
+    }
+    const settingsTimer = window.setInterval(() => {
+      const s = settingsRef.current;
+      if (filterSourceRef.current) return;
+      const a = engine.getStats().anchor;
+      if (s.rememberScroll) localStorage.setItem('qce-scroll', String(a.index));
+      if (s.prefetchChunks) {
+        const c = store.chunkOf(a.index);
+        if (c + 1 < store.manifest.chunks.length && !store.isLoaded(c + 1)) void store.load(c + 1);
+        if (c > 0 && !store.isLoaded(c - 1)) void store.load(c - 1);
+      }
+    }, 800);
+
     return () => {
+      window.clearInterval(settingsTimer);
       if (searchRef.current) searchRef.current.cancelled = true;
       engine.destroy();
       engineRef.current = null;
@@ -659,14 +714,31 @@ export default function Qce(): React.ReactElement {
               >
                 <SelectTrigger size="sm" className="mt-2 w-full">
                   <SelectValue>
-                    {KIND_OPTIONS.find(([k]) => k === filters.kind)?.[1] ?? 'All types'}
+                    {(() => {
+                      const opt = KIND_OPTIONS.find(([k]) => k === filters.kind);
+                      const Icon = opt?.[2] ?? LayersIcon;
+                      return (
+                        <span className="flex items-center gap-2">
+                          <Icon className="size-3.5 text-muted-foreground" />
+                          {opt?.[1] ?? 'All types'}
+                        </span>
+                      );
+                    })()}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
-                  <SelectItem value="">All types</SelectItem>
-                  {KIND_OPTIONS.map(([k, label]) => (
+                  <SelectItem value="">
+                    <span className="flex items-center gap-2">
+                      <LayersIcon className="size-3.5 text-muted-foreground" />
+                      All types
+                    </span>
+                  </SelectItem>
+                  {KIND_OPTIONS.map(([k, label, Icon]) => (
                     <SelectItem key={k} value={k}>
-                      {label}
+                      <span className="flex items-center gap-2">
+                        <Icon className="size-3.5 text-muted-foreground" />
+                        {label}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectPopup>
@@ -705,14 +777,24 @@ export default function Qce(): React.ReactElement {
               <GithubMark className="size-3.5" />
               shuakami/qq-chat-exporter
             </a>
-            <button
-              type="button"
-              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground"
-              onClick={() => setDark((v) => !v)}
-            >
-              {dark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
-            </button>
+            <span className="flex items-center">
+              <button
+                type="button"
+                aria-label="Settings"
+                className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <SettingsIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="flex size-6 items-center justify-center rounded-md transition-colors hover:bg-muted hover:text-foreground"
+                onClick={() => setDark((v) => !v)}
+              >
+                {dark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
+              </button>
+            </span>
           </div>
           <span className="flex items-center gap-1.5">
             <RustMark className="size-3.5" />
@@ -757,6 +839,134 @@ export default function Qce(): React.ReactElement {
       </div>
 
       <MediaPreview item={preview} onClose={() => setPreview(null)} />
+      <SettingsDialog
+        open={settingsOpen}
+        settings={settings}
+        onChange={setSettings}
+        onClose={() => setSettingsOpen(false)}
+      />
+    </div>
+  );
+}
+
+function SettingsToggle({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      className="flex w-full items-start justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/60"
+      onClick={() => onChange(!checked)}
+    >
+      <span className="min-w-0">
+        <span className="block text-[13px] font-medium text-foreground">{label}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
+      </span>
+      <span
+        aria-hidden
+        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+          checked ? 'bg-primary' : 'bg-muted-foreground/25'
+        }`}
+      >
+        <span
+          className={`size-4 rounded-full bg-background shadow transition-transform ${
+            checked ? 'translate-x-4' : ''
+          }`}
+        />
+      </span>
+    </button>
+  );
+}
+
+function SettingsDialog({
+  open,
+  settings,
+  onChange,
+  onClose,
+}: {
+  open: boolean;
+  settings: QceSettings;
+  onChange: (s: QceSettings) => void;
+  onClose: () => void;
+}): React.ReactElement | null {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setVisible(false);
+    let raf2 = 0;
+    const raf = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setVisible(true));
+    });
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf2);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return (
+    <div
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/45 transition-opacity duration-200 ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-label="Settings"
+        className="w-[380px] max-w-[92vw] rounded-xl border bg-background p-4 shadow-xl"
+        style={{
+          transform: visible ? 'scale(1)' : 'scale(0.86)',
+          opacity: visible ? 1 : 0,
+          transition: 'transform 520ms cubic-bezier(0.34, 1.36, 0.44, 1), opacity 200ms ease',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Settings</span>
+          <button
+            type="button"
+            aria-label="Close"
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={onClose}
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+        <div className="mt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Experimental
+        </div>
+        <div className="mt-1 flex flex-col">
+          <SettingsToggle
+            label="Remember scroll position"
+            hint="Reopen the archive where you left off."
+            checked={settings.rememberScroll}
+            onChange={(v) => onChange({ ...settings, rememberScroll: v })}
+          />
+          <SettingsToggle
+            label="Prefetch nearby chunks"
+            hint="Load adjacent chunks in the background while you read."
+            checked={settings.prefetchChunks}
+            onChange={(v) => onChange({ ...settings, prefetchChunks: v })}
+          />
+        </div>
+      </div>
     </div>
   );
 }

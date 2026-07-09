@@ -95,7 +95,7 @@ export class ChunkStore {
   private readonly baseUrl: string;
   private readonly cache = new Map<number, QceRecord[]>();
   private readonly pending = new Map<number, Promise<QceRecord[]>>();
-  private waiter: ((c: QceChunkPayload) => void) | null = null;
+  private readonly resolvers = new Map<string, (c: QceChunkPayload) => void>();
 
   constructor(baseUrl: string, manifest: QceManifest) {
     this.baseUrl = baseUrl;
@@ -107,7 +107,7 @@ export class ChunkStore {
       acc += c.count;
     }
     window.__QCE_CHUNK__ = (c) => {
-      this.waiter?.(c);
+      this.resolvers.get(c.id)?.(c);
     };
   }
 
@@ -147,31 +147,27 @@ export class ChunkStore {
     const inflight = this.pending.get(chunk);
     if (inflight) return inflight;
     const meta = this.manifest.chunks[chunk]!;
-    const p: Promise<QceRecord[]> = new Promise<QceRecord[]>((res, rej) => {
-      const run = async (): Promise<void> => {
-        // JSONP is inherently serial per callback: chain onto prior pendings.
-        const prev = [...this.pending.values()].filter((x) => x !== p);
-        await Promise.allSettled(prev);
-        const done = new Promise<QceRecord[]>((r) => {
-          this.waiter = (c) => {
-            this.waiter = null;
-            r(c.messages);
-          };
+    // Payloads self-identify by chunk id, so loads can run fully in parallel:
+    // the shared JSONP callback dispatches to the matching per-chunk resolver.
+    const p: Promise<QceRecord[]> = (async () => {
+      const done = new Promise<QceRecord[]>((r) => {
+        this.resolvers.set(meta.id, (c) => {
+          this.resolvers.delete(meta.id);
+          r(c.messages);
         });
-        await loadScript(`${this.baseUrl}/${meta.file}`);
-        const messages = await done;
-        this.cache.set(chunk, messages);
-        this.loadedCount += 1;
-        while (this.cache.size > LRU_CAPACITY) {
-          const oldest = this.cache.keys().next().value;
-          if (oldest === undefined) break;
-          this.cache.delete(oldest);
-        }
-        this.onChunkLoaded?.();
-        res(messages);
-      };
-      run().catch(rej);
-    }).finally(() => this.pending.delete(chunk));
+      });
+      await loadScript(`${this.baseUrl}/${meta.file}`);
+      const messages = await done;
+      this.cache.set(chunk, messages);
+      this.loadedCount += 1;
+      while (this.cache.size > LRU_CAPACITY) {
+        const oldest = this.cache.keys().next().value;
+        if (oldest === undefined) break;
+        this.cache.delete(oldest);
+      }
+      this.onChunkLoaded?.();
+      return messages;
+    })().finally(() => this.pending.delete(chunk));
     this.pending.set(chunk, p);
     return p;
   }

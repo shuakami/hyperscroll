@@ -94,8 +94,9 @@
 .ficon {
   flex: none; display: inline-flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; border-radius: 8px; background: var(--muted);
-  font-size: 8px; font-weight: 700; letter-spacing: .06em; color: var(--muted-foreground);
+  color: var(--muted-foreground);
 }
+.ficon svg { width: 16px; height: 16px; }
 .msg.me .ficon { background: color-mix(in srgb, var(--primary-foreground) 16%, transparent); color: var(--primary-foreground); }
 .fmeta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .fname { font-size: 13px; font-weight: 500; word-break: break-all; }
