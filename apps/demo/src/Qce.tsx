@@ -27,6 +27,7 @@ import {
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Loader } from '@/components/ui/loader';
 import { MediaPreview, type MediaItem } from '@/components/ui/media-preview';
+import { AVATAR_BY_USER } from './chat-source';
 import { toggleVoice } from './voice-player';
 import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 
@@ -106,14 +107,27 @@ function skeletonHtml(i: number): string {
   );
 }
 
+function SenderAvatar({ name }: { name: string }): React.ReactElement {
+  const login = AVATAR_BY_USER.get(name) ?? 'octocat';
+  return (
+    <img
+      src={`https://avatars.githubusercontent.com/${login}?size=40`}
+      alt=""
+      aria-hidden
+      loading="lazy"
+      className="size-4 shrink-0 rounded-full"
+    />
+  );
+}
+
 /** Upscales a picsum thumbnail URL for full-size preview. */
-function fullSizeSrc(src: string): string {
+function fullSize(src: string): { src: string; width?: number; height?: number } {
   const m = src.match(/^(https:\/\/picsum\.photos\/seed\/[^/]+)\/(\d+)\/(\d+)/);
-  if (!m) return src;
+  if (!m) return { src };
   const w = Number(m[2]);
   const h = Number(m[3]);
-  const scale = Math.min(4, Math.floor(1600 / Math.max(w, h)));
-  return `${m[1]}/${w * Math.max(1, scale)}/${h * Math.max(1, scale)}`;
+  const scale = Math.max(1, Math.min(4, Math.floor(1600 / Math.max(w, h))));
+  return { src: `${m[1]}/${w * scale}/${h * scale}`, width: w * scale, height: h * scale };
 }
 
 /** Synthesizes a small WAV blob so demo voice messages have a real download. */
@@ -256,9 +270,9 @@ export default function Qce(): React.ReactElement {
       const seed = img.src.match(/seed\/(\d+)/)?.[1] ?? 'image';
       setPreview({
         type: 'image',
-        src: fullSizeSrc(img.src),
         name: `image-${seed}.jpg`,
         thumb: img.src,
+        ...fullSize(img.src),
       });
     }
   }
@@ -396,7 +410,7 @@ export default function Qce(): React.ReactElement {
         if (batch.length > 0) src.append(batch);
         engine.refresh();
         setFilterStatus(
-          `${src.count.toLocaleString()} results, chunk ${c + 1} of ${store.manifest.chunks.length}, ${skipped} skipped`,
+          `${src.count.toLocaleString()} results, ${Math.round(((c + 1) / store.manifest.chunks.length) * 100)}% scanned`,
         );
       }
       if (filterRunRef.current !== run) return;
@@ -478,7 +492,7 @@ export default function Qce(): React.ReactElement {
         } else {
           const pos = s.cursor >= 0 ? `${(s.cursor + 1).toLocaleString()} of ` : '';
           setSearchStatus(
-            `${pos}${s.matches.length.toLocaleString()} matches, chunk ${c + 1} of ${store.manifest.chunks.length}, ${s.chunksSkipped} skipped`,
+            `${pos}${s.matches.length.toLocaleString()} matches, ${Math.round(((c + 1) / store.manifest.chunks.length) * 100)}%`,
           );
         }
       }
@@ -616,13 +630,25 @@ export default function Qce(): React.ReactElement {
                 onValueChange={(v) => applyFilters({ ...filtersRef.current, sender: v ?? '' })}
               >
                 <SelectTrigger size="sm" className="mt-2 w-full">
-                  <SelectValue>{filters.sender || 'All senders'}</SelectValue>
+                  <SelectValue>
+                    {filters.sender ? (
+                      <span className="flex items-center gap-2">
+                        <SenderAvatar name={filters.sender} />
+                        {filters.sender}
+                      </span>
+                    ) : (
+                      'All senders'
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
                   <SelectItem value="">All senders</SelectItem>
                   {manifest.senders.map((sd) => (
                     <SelectItem key={sd.uid} value={sd.displayName}>
-                      {sd.displayName}
+                      <span className="flex items-center gap-2">
+                        <SenderAvatar name={sd.displayName} />
+                        {sd.displayName}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectPopup>
@@ -669,20 +695,16 @@ export default function Qce(): React.ReactElement {
         ) : null}
 
         <div className="mt-auto space-y-2 pt-6 text-muted-foreground text-xs">
-          <a
-            href={QCE_REPO}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 hover:text-foreground"
-          >
-            <GithubMark className="size-3.5" />
-            shuakami/qq-chat-exporter
-          </a>
           <div className="flex items-center justify-between gap-1.5">
-            <span className="flex items-center gap-1.5">
-              <RustMark className="size-3.5" />
-              exporter {manifest?.exporter?.version ?? ''}
-            </span>
+            <a
+              href={QCE_REPO}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-foreground"
+            >
+              <GithubMark className="size-3.5" />
+              shuakami/qq-chat-exporter
+            </a>
             <button
               type="button"
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -692,7 +714,16 @@ export default function Qce(): React.ReactElement {
               {dark ? <SunIcon className="size-3.5" /> : <MoonIcon className="size-3.5" />}
             </button>
           </div>
-          <a href="./" className="block hover:text-foreground">
+          <span className="flex items-center gap-1.5">
+            <RustMark className="size-3.5" />
+            exporter {manifest?.exporter?.version ?? ''}
+          </span>
+          <a
+            href="https://github.com/shuakami/hyperscroll"
+            target="_blank"
+            rel="noreferrer"
+            className="block hover:text-foreground"
+          >
             QCE Viewer powered by <span className="italic">HyperScroll</span>
           </a>
         </div>

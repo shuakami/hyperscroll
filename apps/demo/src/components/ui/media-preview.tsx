@@ -9,6 +9,9 @@ export interface MediaItem {
   name: string;
   /** Low-res thumbnail shown blurred while the full media loads. */
   thumb?: string;
+  /** Expected natural size, used to size the loading skeleton. */
+  width?: number;
+  height?: number;
 }
 
 export async function downloadUrl(src: string, name: string): Promise<void> {
@@ -36,13 +39,23 @@ export function MediaPreview({
   const [current, setCurrent] = React.useState<MediaItem | null>(null);
   const [visible, setVisible] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
+  const [zoom, setZoom] = React.useState(1);
+  const frameRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (item) {
       setCurrent(item);
       setLoaded(false);
-      const raf = requestAnimationFrame(() => setVisible(true));
-      return () => cancelAnimationFrame(raf);
+      setZoom(1);
+      // Double rAF: guarantee the hidden state is painted before animating in.
+      let raf2 = 0;
+      const raf = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setVisible(true));
+      });
+      return () => {
+        cancelAnimationFrame(raf);
+        cancelAnimationFrame(raf2);
+      };
     }
     setVisible(false);
     const t = setTimeout(() => setCurrent(null), 240);
@@ -58,7 +71,30 @@ export function MediaPreview({
     return () => window.removeEventListener('keydown', onKey);
   }, [current, onClose]);
 
+  // Wheel zoom on images; a native non-passive listener so we can preventDefault.
+  React.useEffect(() => {
+    const el = frameRef.current;
+    if (!el || !current || current.type !== 'image') return;
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault();
+      setZoom((z) => Math.min(4, Math.max(1, z * (e.deltaY < 0 ? 1.18 : 1 / 1.18))));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [current]);
+
   if (!current) return null;
+
+  // Size the skeleton to the media's expected on-screen dimensions so the
+  // frame doesn't jump when the full image arrives.
+  const ratio = current.width && current.height ? current.width / current.height : null;
+  const frameStyle: React.CSSProperties | undefined =
+    !loaded && ratio
+      ? {
+          width: `min(88vw, calc(74vh * ${ratio}), ${current.width}px)`,
+          aspectRatio: `${ratio}`,
+        }
+      : undefined;
 
   return (
     <div
@@ -98,12 +134,12 @@ export function MediaPreview({
       <figure
         className="pointer-events-none relative z-[5] flex max-h-[86vh] max-w-[90vw] flex-col items-center gap-3"
         style={{
-          transform: visible ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(10px)',
+          transform: visible ? 'scale(1)' : 'scale(0.86)',
           opacity: visible ? 1 : 0,
-          transition: 'transform 480ms cubic-bezier(0.34, 1.28, 0.5, 1), opacity 220ms ease',
+          transition: 'transform 520ms cubic-bezier(0.34, 1.36, 0.44, 1), opacity 200ms ease',
         }}
       >
-        <div className="pointer-events-auto relative overflow-hidden rounded-xl">
+        <div ref={frameRef} className="pointer-events-auto relative overflow-hidden rounded-xl" style={frameStyle}>
           {!loaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               {current.thumb ? (
@@ -129,7 +165,7 @@ export function MediaPreview({
               autoPlay
               playsInline
               onLoadedData={() => setLoaded(true)}
-              className={`max-h-[74vh] max-w-[90vw] min-h-[220px] min-w-[320px] bg-black object-contain transition-opacity duration-300 ${
+              className={`max-h-[78vh] w-[min(960px,88vw)] bg-black object-contain transition-opacity duration-300 ${
                 loaded ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -142,8 +178,9 @@ export function MediaPreview({
               alt={current.name}
               onLoad={() => setLoaded(true)}
               draggable={false}
-              className={`max-h-[74vh] max-w-[90vw] min-h-[180px] min-w-[240px] object-contain transition-opacity duration-300 ${
-                loaded ? 'opacity-100' : 'opacity-0'
+              style={{ transform: `scale(${zoom})`, transition: 'transform 160ms ease, opacity 300ms ease' }}
+              className={`max-h-[74vh] max-w-[90vw] object-contain ${loaded ? 'opacity-100' : 'opacity-0'} ${
+                loaded ? (zoom > 1 ? 'cursor-zoom-out' : 'cursor-zoom-in') : ''
               }`}
             />
           )}

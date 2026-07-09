@@ -193,6 +193,10 @@ mark.hl { background: #fef08a; color: #171717; border-radius: 3px; padding: 0 1p
 /* Sticker messages: bare image, no bubble chrome. */
 .sticker-wrap { width: fit-content; padding: 2px 0; }
 img.sticker { display: block; width: 110px; height: 110px; }
+img.sticker-img { width: 130px; height: 130px; object-fit: cover; border-radius: 10px; }
+
+/* Caption line on image messages ("text with picture"). */
+.icaption { font-size: 14px; line-height: 1.6; padding: 4px 8px 8px; }
 
 /* Inline download affordance on voice bubbles. */
 .vdl {

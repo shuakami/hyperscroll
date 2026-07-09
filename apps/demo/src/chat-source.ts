@@ -29,7 +29,7 @@ const USERS: ReadonlyArray<readonly [string, string, string]> = [
   ['Me', '#0099ff', 'octocat'],
 ];
  
-const AVATAR_BY_USER = new Map(USERS.map((u) => [u[0], u[2]]));
+export const AVATAR_BY_USER = new Map(USERS.map((u) => [u[0], u[2]]));
  
 // A pool of natural, developer-flavoured chat lines. Search keywords below are
 // intentionally present so the demo's search/filter has meaningful hits.
@@ -173,6 +173,28 @@ const STICKERS: readonly string[] = [
 function stickerUrl(code: string): string {
   return `https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/svg/${code}.svg`;
 }
+
+// Meme-style image stickers bundled with the demo (relative to the page URL).
+const IMG_STICKERS: readonly string[] = ['stickers/cat-plead.jpg'];
+
+// File-type badge: extension label + accent color, keyed by extension.
+const FILE_KINDS: Readonly<Record<string, readonly [string, string]>> = {
+  csv: ['CSV', '#33a852'],
+  zip: ['ZIP', '#e08b3a'],
+  json: ['JSON', '#a24fd0'],
+  html: ['HTML', '#e0536e'],
+  tgz: ['TGZ', '#e08b3a'],
+  heapsnapshot: ['HEAP', '#5470e0'],
+  log: ['LOG', '#2aa7b8'],
+  pdf: ['PDF', '#e0536e'],
+  mp4: ['MP4', '#7a6ff0'],
+};
+
+function fileBadge(name: string): string {
+  const ext = name.slice(name.lastIndexOf('.') + 1).toLowerCase();
+  const [label, color] = FILE_KINDS[ext] ?? ['FILE', '#8a8a8a'];
+  return `<span class="ficon" style="background:color-mix(in srgb, ${color} 14%, transparent);color:${color}">${label}</span>`;
+}
  
 export type MessageKind =
   | 'sys'
@@ -222,9 +244,20 @@ export function messageMeta(i: number): MessageMeta {
     return { kind: 'text', user: u[0], userColor: u[1], text: quoteText ? `${quoteText} ${text}` : text, html: `<div class="bubble">${quote}${text}</div>` };
   }
   if (t < 0.69) {
-    return { kind: 'img', user: u[0], userColor: u[1], text: '', html: `<div class="bubble img-bubble">${realImg(r)}</div>` };
+    // Some image messages carry a caption line, QQ "text with picture" style.
+    const withText = r() < 0.35;
+    const text = withText ? makeText(r) : '';
+    const caption = withText ? `<div class="icaption">${text}</div>` : '';
+    return { kind: 'img', user: u[0], userColor: u[1], text, html: `<div class="bubble img-bubble">${caption}${realImg(r)}</div>` };
   }
   if (t < 0.72) {
+    if (r() < 0.5) {
+      const src = pick(IMG_STICKERS, r);
+      return {
+        kind: 'sticker', user: u[0], userColor: u[1], text: '',
+        html: `<div class="sticker-wrap"><img class="sticker sticker-img" loading="lazy" width="130" height="130" src="${src}" alt="sticker"/></div>`,
+      };
+    }
     const code = pick(STICKERS, r);
     return {
       kind: 'sticker', user: u[0], userColor: u[1], text: '',
@@ -257,7 +290,7 @@ export function messageMeta(i: number): MessageMeta {
     return {
       kind: 'file', user: u[0], userColor: u[1], text: f[0],
       html:
-        `<div class="bubble file-bubble"><span class="ficon">FILE</span>` +
+        `<div class="bubble file-bubble">${fileBadge(f[0])}` +
         `<span class="fmeta"><span class="fname">${esc(f[0])}</span><span class="fsize">${f[1]}</span></span></div>`,
     };
   }
@@ -341,11 +374,11 @@ export function messageText(i: number): string {
     const text = makeText(r);
     return quoteText ? `${quoteText} ${text}` : text;
   }
-  if (t < 0.69) return '';
-  if (t < 0.72) {
-    pick(STICKERS, r);
+  if (t < 0.69) {
+    if (r() < 0.35) return makeText(r);
     return '';
   }
+  if (t < 0.72) return '';
   if (t < 0.78) return `Voice message ${(2 + r() * 40) | 0}s`;
   if (t < 0.83) return pick(SNIPPETS, r);
   if (t < 0.87) return pick(FILES, r)[0];
