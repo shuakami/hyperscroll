@@ -84,14 +84,13 @@ export function DateRangePicker({
   }) as (range: DateRange | undefined, selectedDay: Date) => void;
 
   const timeInputClass =
-    'h-8 w-[104px] shrink-0 rounded-lg bg-black/[0.03] px-2 text-center text-[13px] tabular-nums outline-none transition-colors focus:bg-black/[0.05] dark:bg-white/[0.05] dark:focus:bg-white/[0.08]';
+    'h-8 w-[120px] shrink-0 rounded-lg bg-black/[0.03] px-2 text-center text-[13px] tabular-nums outline-none transition-colors focus:bg-black/[0.05] dark:bg-white/[0.05] dark:focus:bg-white/[0.08]';
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
         className={cn(selectTriggerVariants({ size: 'sm' }), 'justify-start', className)}
       >
-        <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
         {from ? (
           <span className="flex items-center gap-2 tabular-nums">
             <span>{formatDisplay(from)}</span>
@@ -108,10 +107,8 @@ export function DateRangePicker({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto overflow-hidden rounded-xl p-0 shadow-xl">
         <div className="flex w-full flex-col bg-popover sm:w-max sm:flex-row">
-          <div className="flex w-full shrink-0 justify-center p-3 sm:w-[320px]">
+          <div className="flex w-full shrink-0 justify-center p-3 sm:w-[280px]">
             <Calendar
-              className="w-full [--cell-size:--spacing(9)]"
-              classNames={{ root: 'w-full' }}
               mode="range"
               defaultMonth={from ?? defaultMonth}
               selected={range}
@@ -120,7 +117,7 @@ export function DateRangePicker({
             />
           </div>
 
-          <div className="flex w-full shrink-0 flex-col justify-between border-t p-4 sm:w-[196px] sm:border-t-0 sm:border-l">
+          <div className="flex w-full shrink-0 flex-col justify-between border-t p-4 sm:w-[236px] sm:border-t-0 sm:border-l">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] text-muted-foreground">Start</label>

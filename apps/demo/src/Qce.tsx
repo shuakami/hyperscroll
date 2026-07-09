@@ -714,16 +714,7 @@ export default function Qce(): React.ReactElement {
               >
                 <SelectTrigger size="sm" className="mt-2 w-full">
                   <SelectValue>
-                    {(() => {
-                      const opt = KIND_OPTIONS.find(([k]) => k === filters.kind);
-                      const Icon = opt?.[2] ?? LayersIcon;
-                      return (
-                        <span className="flex items-center gap-2">
-                          <Icon className="size-3.5 text-muted-foreground" />
-                          {opt?.[1] ?? 'All types'}
-                        </span>
-                      );
-                    })()}
+                    {KIND_OPTIONS.find(([k]) => k === filters.kind)?.[1] ?? 'All types'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectPopup>
@@ -865,7 +856,7 @@ function SettingsToggle({
       type="button"
       role="switch"
       aria-checked={checked}
-      className="flex w-full items-start justify-between gap-4 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/60"
+      className="flex w-full items-center justify-between gap-4 rounded-lg px-3 py-3 text-left transition-colors hover:bg-muted/60"
       onClick={() => onChange(!checked)}
     >
       <span className="min-w-0">
@@ -874,7 +865,7 @@ function SettingsToggle({
       </span>
       <span
         aria-hidden
-        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+        className={`flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
           checked ? 'bg-primary' : 'bg-muted-foreground/25'
         }`}
       >
@@ -929,8 +920,8 @@ function SettingsDialog({
     >
       <div
         role="dialog"
-        aria-label="Settings"
-        className="w-[380px] max-w-[92vw] rounded-xl border bg-background p-4 shadow-xl"
+        aria-label="设置"
+        className="w-[380px] max-w-[92vw] rounded-xl border bg-background shadow-xl"
         style={{
           transform: visible ? 'scale(1)' : 'scale(0.86)',
           opacity: visible ? 1 : 0,
@@ -938,30 +929,28 @@ function SettingsDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Settings</span>
+        <div className="flex items-center justify-between px-5 pt-4">
+          <span className="text-sm font-medium">设置</span>
           <button
             type="button"
-            aria-label="Close"
+            aria-label="关闭"
             className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             onClick={onClose}
           >
             <XIcon className="size-3.5" />
           </button>
         </div>
-        <div className="mt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          Experimental
-        </div>
-        <div className="mt-1 flex flex-col">
+        <div className="px-5 pt-3 pb-1 text-xs text-muted-foreground">实验性功能</div>
+        <div className="flex flex-col divide-y divide-border/60 px-2 pb-3">
           <SettingsToggle
-            label="Remember scroll position"
-            hint="Reopen the archive where you left off."
+            label="记住滚动位置"
+            hint="下次打开时回到上次阅读的位置"
             checked={settings.rememberScroll}
             onChange={(v) => onChange({ ...settings, rememberScroll: v })}
           />
           <SettingsToggle
-            label="Prefetch nearby chunks"
-            hint="Load adjacent chunks in the background while you read."
+            label="预加载相邻分块"
+            hint="阅读时在后台提前加载附近的消息分块"
             checked={settings.prefetchChunks}
             onChange={(v) => onChange({ ...settings, prefetchChunks: v })}
           />

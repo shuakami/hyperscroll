@@ -57,7 +57,11 @@ declare global {
   }
 }
 
-const LRU_CAPACITY = 6;
+const LRU_CAPACITY = 16;
+const MAX_CONCURRENT_LOADS = 4;
+// Render-requested chunks older than this many requests behind the newest
+// are dropped: the user has scrolled past them.
+const STALE_WINDOW = 8;
 
 function loadScript(src: string): Promise<void> {
   return new Promise((res, rej) => {
@@ -96,6 +100,8 @@ export class ChunkStore {
   private readonly cache = new Map<number, QceRecord[]>();
   private readonly pending = new Map<number, Promise<QceRecord[]>>();
   private readonly resolvers = new Map<string, (c: QceChunkPayload) => void>();
+  private readonly wanted = new Map<number, number>();
+  private wantGen = 0;
 
   constructor(baseUrl: string, manifest: QceManifest) {
     this.baseUrl = baseUrl;
@@ -132,8 +138,41 @@ export class ChunkStore {
       this.cache.set(c, records);
       return records[index - this.chunkStarts[c]!] ?? null;
     }
-    void this.load(c);
+    this.want(c);
     return null;
+  }
+
+  /**
+   * Marks a chunk as needed by the current render. Newest requests win: the
+   * pump starts the most recently wanted chunks first and drops stale ones,
+   * so a scrollbar drag never queues dozens of obsolete loads ahead of the
+   * chunk the user actually settled on.
+   */
+  private want(chunk: number): void {
+    this.wanted.set(chunk, ++this.wantGen);
+    this.pump();
+  }
+
+  private pump(): void {
+    while (this.pending.size < MAX_CONCURRENT_LOADS && this.wanted.size > 0) {
+      let best = -1;
+      let bestGen = -1;
+      for (const [c, g] of this.wanted) {
+        if (this.cache.has(c) || this.pending.has(c) || g < this.wantGen - STALE_WINDOW) {
+          this.wanted.delete(c);
+          continue;
+        }
+        if (g > bestGen) {
+          bestGen = g;
+          best = c;
+        }
+      }
+      if (best < 0) return;
+      this.wanted.delete(best);
+      void this.load(best)
+        .catch(() => undefined)
+        .finally(() => this.pump());
+    }
   }
 
   isLoaded(chunk: number): boolean {
