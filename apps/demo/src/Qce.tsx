@@ -353,6 +353,63 @@ export default function Qce(): React.ReactElement {
             </dl>
 
             <div className="mt-8">
+              <div className="font-medium text-muted-foreground text-xs">Search</div>
+              <InputGroup className="mt-2 w-full">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  size="sm"
+                  type="search"
+                  placeholder="Search messages"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') runSearch();
+                  }}
+                />
+              </InputGroup>
+              <div className="mt-2 flex items-center gap-1.5">
+                <Button size="sm" onClick={runSearch}>
+                  Search
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Previous match"
+                  disabled={!canNav}
+                  onClick={() => jumpToMatch((searchRef.current?.cursor ?? 0) - 1)}
+                >
+                  <ArrowUpIcon />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Next match"
+                  disabled={!canNav}
+                  onClick={() => jumpToMatch((searchRef.current?.cursor ?? 0) + 1)}
+                >
+                  <ArrowDownIcon />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Clear search"
+                  disabled={!canClear}
+                  onClick={() => {
+                    setQuery('');
+                    resetSearch();
+                  }}
+                >
+                  <XIcon />
+                </Button>
+              </div>
+              {searchStatus ? (
+                <div className="mt-2 text-muted-foreground text-xs">{searchStatus}</div>
+              ) : null}
+            </div>
+
+            <div className="mt-8">
               <div className="font-medium text-muted-foreground text-xs">Filter</div>
               <Select value={filterSender} onValueChange={(v) => applyFilter(v ?? '')}>
                 <SelectTrigger size="sm" className="mt-2 w-full">
@@ -392,65 +449,15 @@ export default function Qce(): React.ReactElement {
 
       {/* Main */}
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2.5">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="md:hidden"
-            aria-label="Toggle sidebar"
-            onClick={() => setSidebarOpen((v) => !v)}
-          >
-            <PanelLeftIcon />
-          </Button>
-          <InputGroup className="w-full min-w-0 flex-1 basis-48 md:w-80 md:flex-none">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              size="sm"
-              type="search"
-              placeholder="Search messages (Bloom-prefiltered)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') runSearch();
-              }}
-            />
-          </InputGroup>
-          <Button size="sm" onClick={runSearch}>
-            Search
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={!canNav}
-            onClick={() => jumpToMatch((searchRef.current?.cursor ?? 0) - 1)}
-          >
-            <ArrowUpIcon />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon-sm"
-            disabled={!canNav}
-            onClick={() => jumpToMatch((searchRef.current?.cursor ?? 0) + 1)}
-          >
-            <ArrowDownIcon />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            disabled={!canClear}
-            onClick={() => {
-              setQuery('');
-              resetSearch();
-            }}
-          >
-            <XIcon />
-          </Button>
-          {searchStatus ? (
-            <span className="truncate text-muted-foreground text-xs">{searchStatus}</span>
-          ) : null}
-        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="absolute top-2 left-2 z-10 md:hidden"
+          aria-label="Toggle sidebar"
+          onClick={() => setSidebarOpen((v) => !v)}
+        >
+          <PanelLeftIcon />
+        </Button>
 
         <div className="relative min-h-0 flex-1">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
