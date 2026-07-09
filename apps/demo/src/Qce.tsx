@@ -112,9 +112,11 @@ function RustMark({ className }: { className?: string }): React.ReactElement {
 function highlightHtml(html: string, q: string): string {
   const at = html.indexOf('class="bubble');
   if (at === -1) return html;
+  const open = html.indexOf('>', at);
+  if (open === -1) return html;
   const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-  let out = html.slice(0, at);
-  let i = at;
+  let out = html.slice(0, open + 1);
+  let i = open + 1;
   while (i < html.length) {
     const lt = html.indexOf('<', i);
     const text = lt === -1 ? html.slice(i) : html.slice(i, lt);
