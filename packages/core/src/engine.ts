@@ -53,7 +53,10 @@ export class HyperScroll {
   private smoothRunning = false;
   private smoothLastTs = 0;
   private framePending = false;
+  private smoothTau = 110;
   private touchY: number | null = null;
+  private touchVel = 0;
+  private touchLastT = 0;
   private destroyed = false;
   private readonly resizeObserver: ResizeObserver | null;
   private readonly abort = new AbortController();
@@ -161,6 +164,7 @@ export class HyperScroll {
     e.preventDefault();
     const px = e.deltaMode === 1 ? e.deltaY * 24 : e.deltaY;
     if (this.opts.smoothWheel) {
+      this.smoothTau = 110;
       this.smoothRemainder += px;
       this.startSmoothLoop();
     } else {
@@ -181,7 +185,6 @@ export class HyperScroll {
     if (this.smoothRunning || this.destroyed) return;
     this.smoothRunning = true;
     this.smoothLastTs = 0;
-    const TAU_MS = 110;
     const tick = (now: number): void => {
       if (this.destroyed) {
         this.smoothRunning = false;
@@ -199,7 +202,7 @@ export class HyperScroll {
         this.smoothRunning = false;
         return;
       }
-      const step = remainder * (1 - Math.exp(-dt / TAU_MS));
+      const step = remainder * (1 - Math.exp(-dt / this.smoothTau));
       this.smoothRemainder -= step;
       this.anchor = { ...this.anchor, offset: this.anchor.offset + step };
       this.position();
@@ -229,19 +232,38 @@ export class HyperScroll {
  
   private readonly onTouchStart = (e: TouchEvent): void => {
     this.touchY = e.touches[0]?.clientY ?? null;
+    this.touchVel = 0;
+    this.touchLastT = e.timeStamp;
+    // A touch on a moving list stops the fling, native-style.
+    this.smoothRemainder = 0;
   };
- 
+
   private readonly onTouchMove = (e: TouchEvent): void => {
     const y = e.touches[0]?.clientY;
     if (this.touchY === null || y === undefined) return;
     e.preventDefault();
-    this.anchor = { ...this.anchor, offset: this.anchor.offset + (this.touchY - y) };
+    const delta = this.touchY - y;
+    const dt = Math.max(e.timeStamp - this.touchLastT, 1);
+    // Blend recent velocity so the release fling reflects the last ~50ms of
+    // finger motion rather than a single noisy event.
+    this.touchVel = 0.8 * (delta / dt) + 0.2 * this.touchVel;
+    this.touchLastT = e.timeStamp;
+    this.anchor = { ...this.anchor, offset: this.anchor.offset + delta };
     this.touchY = y;
     this.scheduleFrame();
   };
- 
-  private readonly onTouchEnd = (): void => {
+
+  private readonly onTouchEnd = (e: TouchEvent): void => {
     this.touchY = null;
+    const v = this.touchVel; // px/ms at release
+    this.touchVel = 0;
+    // Stale sample: the finger paused before lifting, so no fling.
+    if (Math.abs(v) < 0.15 || e.timeStamp - this.touchLastT > 80) return;
+    // Exponential-decay fling: total distance v·τ, initial speed exactly v.
+    const FLING_TAU_MS = 325;
+    this.smoothTau = FLING_TAU_MS;
+    this.smoothRemainder = v * FLING_TAU_MS;
+    this.startSmoothLoop();
   };
  
   private readonly onKeyDown = (e: KeyboardEvent): void => {

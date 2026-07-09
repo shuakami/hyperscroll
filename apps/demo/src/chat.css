@@ -166,6 +166,17 @@
 .img { border-radius: 12px; display: block; }
 mark.hl { background: #fef08a; color: #171717; border-radius: 3px; padding: 0 1px; }
 .msg.me .bubble mark.hl { background: #fde047; }
+/* Skeleton placeholders shown while a lazy chunk is in flight. */
+.skel {
+  display: inline-block; border-radius: 8px;
+  background: linear-gradient(90deg, var(--muted) 25%, color-mix(in srgb, var(--muted) 40%, transparent) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s ease-in-out infinite;
+}
+@keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skel-avatar { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; }
+.skel-name { width: 72px; height: 11px; margin: 0 2px; }
+.skel-bubble { height: 38px; border-radius: 16px; }
 .sysrow { text-align: center; padding: 12px 0; contain-intrinsic-size: auto 40px; }
 .sys {
   display: inline-block; font-size: 11px; font-weight: 500;

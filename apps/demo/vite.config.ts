@@ -15,6 +15,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         benchmark: resolve(__dirname, 'benchmark.html'),
         docs: resolve(__dirname, 'docs.html'),
+        qce: resolve(__dirname, 'qce.html'),
       },
     },
   },

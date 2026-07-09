@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "gen:qce": "npx tsx scripts/gen-qce.ts",
     "build": "vite build",
     "typecheck": "tsc --noEmit"
   },
