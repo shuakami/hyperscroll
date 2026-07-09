@@ -177,6 +177,9 @@ mark.hl { background: #fef08a; color: #171717; border-radius: 3px; padding: 0 1p
 .skel-avatar { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; }
 .skel-name { width: 72px; height: 11px; margin: 0 2px; }
 .skel-bubble { height: 38px; border-radius: 16px; }
+/* QCE viewer: center the message column inside the main pane. */
+.qce-viewport .hs-item { max-width: 760px; margin-left: auto; margin-right: auto; }
+
 .sysrow { text-align: center; padding: 12px 0; contain-intrinsic-size: auto 40px; }
 .sys {
   display: inline-block; font-size: 11px; font-weight: 500;

@@ -8,7 +8,13 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from '@/components/ui/input-group';
-import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 
 const BASE_URL = './qce-demo';
@@ -74,7 +80,6 @@ export default function Qce(): React.ReactElement {
   const hudChunks = useRef<HTMLElement>(null);
   const hudCache = useRef<HTMLElement>(null);
   const hudBloom = useRef<HTMLElement>(null);
-  const hudFps = useRef<HTMLElement>(null);
 
   const [manifest, setManifest] = useState<QceManifest | null>(null);
   const [filterSender, setFilterSender] = useState('');
@@ -145,23 +150,7 @@ export default function Qce(): React.ReactElement {
       });
     };
 
-    let frames = 0;
-    let lastT = performance.now();
-    let raf = 0;
-    const fpsLoop = (now: number): void => {
-      frames += 1;
-      if (now - lastT >= 1000) {
-        if (hudFps.current)
-          hudFps.current.textContent = String(Math.round((frames * 1000) / (now - lastT)));
-        frames = 0;
-        lastT = now;
-      }
-      raf = requestAnimationFrame(fpsLoop);
-    };
-    raf = requestAnimationFrame(fpsLoop);
-
     return () => {
-      cancelAnimationFrame(raf);
       if (searchRef.current) searchRef.current.cancelled = true;
       engine.destroy();
       engineRef.current = null;
@@ -328,7 +317,7 @@ export default function Qce(): React.ReactElement {
     <div className="relative flex h-dvh bg-background text-foreground">
       {/* Sidebar */}
       <aside
-        className={`absolute inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col overflow-y-auto border-border border-r bg-background px-5 py-6 transition-transform duration-200 md:static md:translate-x-0 ${
+        className={`absolute inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col overflow-y-auto bg-background px-5 py-6 transition-transform duration-200 md:static md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -374,40 +363,8 @@ export default function Qce(): React.ReactElement {
               </div>
             </dl>
 
-            <Separator className="my-5" />
-
-            <div className="font-medium text-muted-foreground text-xs">Senders</div>
-            <div className="mt-2 space-y-0.5">
-              <button
-                type="button"
-                onClick={() => applyFilter('')}
-                className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted ${
-                  filterSender === '' ? 'bg-muted font-medium' : ''
-                }`}
-              >
-                <span>All senders</span>
-                <span className="tabular-nums text-muted-foreground text-xs">
-                  {stats.totalMessages.toLocaleString()}
-                </span>
-              </button>
-              {manifest.senders.map((sd) => (
-                <button
-                  key={sd.uid}
-                  type="button"
-                  onClick={() => applyFilter(sd.displayName)}
-                  className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted ${
-                    filterSender === sd.displayName ? 'bg-muted font-medium' : ''
-                  }`}
-                >
-                  <span className="truncate">{sd.displayName}</span>
-                  <span className="tabular-nums text-muted-foreground text-xs">
-                    {sd.count.toLocaleString()}
-                  </span>
-                </button>
-              ))}
-            </div>
             {filterStatus ? (
-              <div className="mt-3 text-muted-foreground text-xs">{filterStatus}</div>
+              <div className="mt-4 text-muted-foreground text-xs">{filterStatus}</div>
             ) : null}
           </>
         ) : null}
@@ -458,6 +415,22 @@ export default function Qce(): React.ReactElement {
           <Button size="sm" onClick={runSearch}>
             Search
           </Button>
+          <Select
+            value={filterSender}
+            onValueChange={(v) => applyFilter(v ?? '')}
+          >
+            <SelectTrigger size="sm" className="w-32 min-w-0 sm:w-36">
+              <SelectValue>{filterSender || 'All senders'}</SelectValue>
+            </SelectTrigger>
+            <SelectPopup>
+              <SelectItem value="">All senders</SelectItem>
+              {(manifest?.senders ?? []).map((sd) => (
+                <SelectItem key={sd.uid} value={sd.displayName}>
+                  {sd.displayName}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
           <Button
             variant="outline"
             size="icon-sm"
@@ -492,13 +465,10 @@ export default function Qce(): React.ReactElement {
 
         <div className="relative min-h-0 flex-1">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
-          <div id="viewport" ref={viewportRef} className="h-full" />
+          <div id="viewport" ref={viewportRef} className="qce-viewport h-full" />
         </div>
 
         <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded-xl bg-popover/90 p-2 font-mono text-[10px] text-muted-foreground leading-relaxed backdrop-blur sm:right-4 sm:bottom-4 sm:min-w-52 sm:p-3 sm:text-xs">
-          <div>
-            FPS <b className="text-base text-green-600" ref={hudFps}>--</b>
-          </div>
           <div>
             Current message <b className="font-semibold text-foreground" ref={hudIdx}>0</b>
           </div>
