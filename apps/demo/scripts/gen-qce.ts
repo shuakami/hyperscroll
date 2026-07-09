@@ -120,6 +120,7 @@ for (let c = 0; c * PER_CHUNK < TOTAL; c++) {
 const manifest = {
   format: 'qce-modern-html-chunked',
   version: 1,
+  exporter: { name: 'qq-chat-exporter', version: '5.5.79' },
   exportTime: new Date().toISOString(),
   chat: { name: 'HyperScroll dev group', type: 'group' },
   stats: {

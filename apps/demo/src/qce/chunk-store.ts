@@ -35,6 +35,7 @@ export interface QceChunkMeta {
 export interface QceManifest {
   format: string;
   version: number;
+  exporter?: { name: string; version: string };
   exportTime: string;
   chat: { name: string; type: string };
   stats: { totalMessages: number; minDateKey: string; maxDateKey: string };
