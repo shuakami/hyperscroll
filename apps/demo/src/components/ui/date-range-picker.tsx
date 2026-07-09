@@ -7,6 +7,7 @@ import type { DateRange } from 'react-day-picker';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { selectTriggerVariants } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 export interface DateRangePickerProps {
@@ -88,10 +89,7 @@ export function DateRangePicker({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
-        className={cn(
-          'flex h-[36px] w-full items-center gap-2 rounded-full bg-black/[0.04] px-4 text-left text-[13px] text-foreground outline-none transition-colors hover:bg-black/[0.06] dark:bg-white/[0.06] dark:hover:bg-white/[0.09]',
-          className,
-        )}
+        className={cn(selectTriggerVariants({ size: 'sm' }), 'justify-start', className)}
       >
         <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
         {from ? (
@@ -105,13 +103,15 @@ export function DateRangePicker({
             )}
           </span>
         ) : (
-          <span className="text-muted-foreground/70">{placeholder}</span>
+          <span className="text-foreground">{placeholder}</span>
         )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto overflow-hidden rounded-xl p-0 shadow-xl">
         <div className="flex w-full flex-col bg-popover sm:w-max sm:flex-row">
-          <div className="flex w-full shrink-0 justify-center p-3 sm:w-[280px]">
+          <div className="flex w-full shrink-0 justify-center p-3 sm:w-[320px]">
             <Calendar
+              className="w-full [--cell-size:--spacing(9)]"
+              classNames={{ root: 'w-full' }}
               mode="range"
               defaultMonth={from ?? defaultMonth}
               selected={range}

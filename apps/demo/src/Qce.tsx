@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { MediaPreview, type MediaItem } from '@/components/ui/media-preview';
 import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 
 const BASE_URL = './qce-demo';
@@ -100,6 +101,47 @@ function skeletonHtml(i: number): string {
   );
 }
 
+/** Upscales a picsum thumbnail URL for full-size preview. */
+function fullSizeSrc(src: string): string {
+  const m = src.match(/^(https:\/\/picsum\.photos\/seed\/[^/]+)\/(\d+)\/(\d+)/);
+  if (!m) return src;
+  const w = Number(m[2]);
+  const h = Number(m[3]);
+  const scale = Math.min(4, Math.floor(1600 / Math.max(w, h)));
+  return `${m[1]}/${w * Math.max(1, scale)}/${h * Math.max(1, scale)}`;
+}
+
+/** Synthesizes a small WAV blob so demo voice messages have a real download. */
+function voiceWav(sec: number, seed: number): Blob {
+  const rate = 8000;
+  const n = rate * Math.max(1, Math.min(sec, 60));
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const str = (off: number, s: string): void => {
+    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
+  };
+  str(0, 'RIFF');
+  v.setUint32(4, 36 + n * 2, true);
+  str(8, 'WAVEfmt ');
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  str(36, 'data');
+  v.setUint32(40, n * 2, true);
+  let s = (seed || 1) >>> 0;
+  for (let i = 0; i < n; i++) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const noise = (s / 2 ** 32 - 0.5) * 0.3;
+    const env = Math.sin((i / rate) * 2.4) ** 2;
+    v.setInt16(44 + i * 2, (noise * env * 32767) | 0, true);
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
 function fmtDate(key: string): string {
   return new Date(`${key}T00:00:00Z`).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -140,6 +182,36 @@ export default function Qce(): React.ReactElement {
   const [canClear, setCanClear] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loadedChunks, setLoadedChunks] = useState(0);
+  const [preview, setPreview] = useState<MediaItem | null>(null);
+
+  function onViewportClick(e: React.MouseEvent): void {
+    const target = e.target as HTMLElement;
+    const voice = target.closest('.voice-bubble');
+    if (voice) {
+      const sec = Number(voice.getAttribute('data-sec') ?? 3);
+      const seed = Number(voice.getAttribute('data-seed') ?? 1);
+      const url = URL.createObjectURL(voiceWav(sec, seed));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voice-${seed}.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+    const videoBubble = target.closest('.video-bubble');
+    if (videoBubble) {
+      const img = videoBubble.querySelector('img');
+      if (!img) return;
+      const name = videoBubble.querySelector('.vname')?.textContent ?? 'video.mp4';
+      setPreview({ type: 'video', src: fullSizeSrc(img.src), name });
+      return;
+    }
+    const img = target.closest('img.img');
+    if (img instanceof HTMLImageElement) {
+      const seed = img.src.match(/seed\/(\d+)/)?.[1] ?? 'image';
+      setPreview({ type: 'image', src: fullSizeSrc(img.src), name: `image-${seed}.jpg` });
+    }
+  }
 
   function withHighlight(src: DataSource): DataSource {
     return {
@@ -382,8 +454,10 @@ export default function Qce(): React.ReactElement {
         }`}
       >
         <a href="./" className="block leading-tight">
-          <span className="block font-semibold text-sm tracking-tight">QCE Viewer</span>
-          <span className="mt-0.5 block text-muted-foreground text-xs">powered by HyperScroll</span>
+          <span className="block font-semibold text-[15px] italic tracking-tight">QCE Viewer</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground italic tracking-wide">
+            powered by <span className="text-foreground/70">HyperScroll</span>
+          </span>
         </a>
 
         <div className="mt-6">
@@ -550,15 +624,11 @@ export default function Qce(): React.ReactElement {
             className="flex items-center gap-1.5 hover:text-foreground"
           >
             <GithubMark className="size-3.5" />
-            qq-chat-exporter
+            shuakami/qq-chat-exporter
           </a>
           <div className="flex items-center gap-1.5">
             <RustMark className="size-3.5" />
             exporter {manifest?.exporter?.version ?? ''}
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            <a href="./docs.html" className="hover:text-foreground">docs</a>
-            <a href="./benchmark.html" className="hover:text-foreground">benchmark</a>
           </div>
         </div>
       </aside>
@@ -584,11 +654,13 @@ export default function Qce(): React.ReactElement {
           <PanelLeftIcon />
         </Button>
 
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1" onClick={onViewportClick}>
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-background to-transparent" />
           <div id="viewport" ref={viewportRef} className="qce-viewport h-full" />
         </div>
       </div>
+
+      <MediaPreview item={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }
