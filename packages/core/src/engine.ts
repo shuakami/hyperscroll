@@ -54,6 +54,7 @@ export class HyperScroll {
   private smoothLastTs = 0;
   private framePending = false;
   private smoothTau = 110;
+  private pointerActive = false;
   private touchY: number | null = null;
   private touchVel = 0;
   private touchLastT = 0;
@@ -91,6 +92,9 @@ export class HyperScroll {
     const signal = this.abort.signal;
     container.addEventListener('wheel', this.onWheel, { passive: false, signal });
     container.addEventListener('scroll', this.onScroll, { passive: true, signal });
+    container.addEventListener('pointerdown', this.onPointerDown, { passive: true, signal });
+    doc.defaultView?.addEventListener('pointerup', this.onPointerUp, { passive: true, signal });
+    doc.defaultView?.addEventListener('pointercancel', this.onPointerUp, { passive: true, signal });
     container.addEventListener('touchstart', this.onTouchStart, { passive: true, signal });
     container.addEventListener('touchmove', this.onTouchMove, { passive: false, signal });
     container.addEventListener('touchend', this.onTouchEnd, { passive: true, signal });
@@ -211,6 +215,14 @@ export class HyperScroll {
     requestAnimationFrame(tick);
   }
  
+  private readonly onPointerDown = (): void => {
+    this.pointerActive = true;
+  };
+
+  private readonly onPointerUp = (): void => {
+    this.pointerActive = false;
+  };
+
   private readonly onScroll = (): void => {
     if (this.ignoreScroll) return;
     const scrollTop = this.viewport.scrollTop;
@@ -218,6 +230,19 @@ export class HyperScroll {
     // resolution is coarse (1px may span many items), so treating an echo as
     // a user drag would teleport the anchor. Ignore near-identical positions.
     if (this.lastSetScrollTop >= 0 && Math.abs(scrollTop - this.lastSetScrollTop) < 3) return;
+    // The coarse thumb mapping (1px may span thousands of items) is only
+    // meant for scrollbar drags, which always happen inside a pointer press.
+    // Small native scrolls arriving outside one — e.g. wheel events swallowed
+    // by a modal popup's backdrop before our preventDefault — are real pixel
+    // deltas, so feed them through the precise anchor path instead.
+    const delta = scrollTop - this.lastSetScrollTop;
+    const wheelLike = Math.max(this.viewport.clientHeight, 1000);
+    if (!this.pointerActive && this.lastSetScrollTop >= 0 && Math.abs(delta) <= wheelLike) {
+      this.lastSetScrollTop = scrollTop;
+      this.anchor = { ...this.anchor, offset: this.anchor.offset + delta };
+      this.scheduleFrame();
+      return;
+    }
     const count = this.opts.dataSource.count;
     const max = this.opts.scrollbarHeight - this.viewport.clientHeight;
     const idx = scrollTopToIndex(scrollTop, max, count);
