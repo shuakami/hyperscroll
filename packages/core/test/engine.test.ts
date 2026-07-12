@@ -32,6 +32,7 @@ function makeSource(count: number): DataSource {
   return {
     count,
     renderToString: (i) => `<div class="hs-item" data-i="${i}">item ${i}</div>`,
+    estimateHeight: () => 50,
   };
 }
  
@@ -126,6 +127,36 @@ describe('HyperScroll engine (jsdom)', () => {
     // teleport the anchor back down.
     container.dispatchEvent(new Event('scroll'));
     expect(engine.getStats().anchor.index).toBe(after);
+  });
+
+  it('uses a compact render window while dragging the native scrollbar', () => {
+    vi.useFakeTimers();
+    const source = makeSource(30_000_000);
+    source.renderSeekToString = (i) =>
+      `<div class="hs-item" data-i="${i}" data-seek="true">item ${i}</div>`;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const engine = new HyperScroll(container, {
+      dataSource: source,
+      smoothWheel: false,
+    });
+    container.dispatchEvent(new Event('pointerdown'));
+    container.scrollTop = 1_500_000;
+    container.dispatchEvent(new Event('scroll'));
+
+    const seeking = engine.getStats();
+    expect(seeking.anchor.index).toBeGreaterThan(10_000_000);
+    expect(seeking.range.start).toBe(seeking.anchor.index);
+    expect(seeking.renderedCount).toBeLessThan(48);
+    expect(container.querySelector('.hs-item')?.getAttribute('data-seek')).toBe('true');
+
+    window.dispatchEvent(new Event('pointerup'));
+    vi.runAllTimers();
+    const settled = engine.getStats();
+    expect(settled.range.start).toBeLessThan(settled.anchor.index);
+    expect(settled.renderedCount).toBeGreaterThan(seeking.renderedCount);
+    expect(container.querySelector('.hs-item')?.hasAttribute('data-seek')).toBe(false);
+    vi.useRealTimers();
   });
  
   it('clamps at the bottom: last item bottom aligns with viewport bottom', () => {

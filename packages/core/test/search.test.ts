@@ -6,6 +6,7 @@ function makeSource(count: number): DataSource {
   return {
     count,
     renderToString: (i) => `<div>item ${i}</div>`,
+    renderSeekToString: (i) => `<div>seek ${i}</div>`,
     estimateHeight: (i) => 10 + (i % 5),
   };
 }
@@ -92,6 +93,7 @@ describe('FilteredDataSource', () => {
     const filtered = new FilteredDataSource(src, [3, 42, 999]);
     expect(filtered.count).toBe(3);
     expect(filtered.renderToString(1)).toBe('<div>item 42</div>');
+    expect(filtered.renderSeekToString?.(1)).toBe('<div>seek 42</div>');
     expect(filtered.sourceIndex(2)).toBe(999);
     expect(filtered.estimateHeight?.(0)).toBe(10 + 3);
   });
