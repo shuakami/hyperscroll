@@ -3,6 +3,7 @@ import { GrainGradient } from '@paper-design/shaders-react';
 import { HyperScroll } from '@hyperscroll/core';
 import App from './App';
 import { createChatSource } from './chat-source.js';
+import { installMediaFallback } from './media-fallback.js';
 
 /** Live engine preview embedded in the hero — the real thing, not a mock. */
 function HeroPreview(): React.ReactElement {
@@ -14,7 +15,11 @@ function HeroPreview(): React.ReactElement {
       dataSource: createChatSource(30_000_000),
     });
     engine.scrollToIndex(14_999_990);
-    return () => engine.destroy();
+    const removeFallback = installMediaFallback(el);
+    return () => {
+      removeFallback();
+      engine.destroy();
+    };
   }, []);
   return (
     <div

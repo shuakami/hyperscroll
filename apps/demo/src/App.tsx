@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { createChatSource, messageBrief, messageText, USER_NAMES } from './chat-source.js';
+import { installMediaFallback } from './media-fallback.js';
 import { stopVoice, toggleVoice } from './voice-player.js';
  
 const params = new URLSearchParams(location.search);
@@ -195,8 +196,10 @@ export default function App({ onHome }: { onHome?: () => void } = {}): React.Rea
       if (bubble) toggleVoice(bubble);
     };
     el.addEventListener('click', onClick);
+    const removeFallback = installMediaFallback(el);
  
     return () => {
+      removeFallback();
       el.removeEventListener('click', onClick);
       stopVoice();
       cancelAnimationFrame(raf);

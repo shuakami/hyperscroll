@@ -199,6 +199,37 @@ img.sticker-img { width: 130px; height: 130px; object-fit: cover; border-radius:
 /* Caption line on image messages ("text with picture"). */
 .icaption { font-size: 14px; line-height: 1.6; padding: 4px 8px 8px; }
 
+/* Empty-state placeholders swapped in for media that failed to load. */
+.media-fallback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  max-width: 100%; border-radius: 12px;
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+.mf-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--background, #fff); border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  color: var(--muted-foreground);
+}
+.mf-icon svg { width: 15px; height: 15px; }
+.mf-text { font-size: 11px; font-weight: 500; color: var(--muted-foreground); letter-spacing: .01em; }
+.mf-sticker { width: 110px; height: 110px; border-radius: 10px; }
+.mf-map { border-radius: 10px 10px 4px 4px; }
+/* Broken media strips the overlay chrome that assumed a visible thumbnail
+   and normalizes the bubble to the neutral outlined look. */
+.video-bubble.media-broken .vbadge { display: none; }
+.loc-bubble.media-broken .lpin { display: none; }
+.msg.me .bubble.media-broken {
+  background: transparent; border: 1px solid var(--border); color: var(--foreground);
+}
+.qce-viewport .media-broken, .qce-viewport .media-fallback { cursor: default; }
+.avatar-fallback {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 600; user-select: none;
+}
+span.cavatar.avatar-fallback { background: var(--muted); color: var(--muted-foreground); }
+
 /* Inline download affordance on voice bubbles. */
 .vdl {
   display: inline-flex; align-items: center; justify-content: center;
