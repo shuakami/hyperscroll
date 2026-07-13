@@ -41,6 +41,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Loader } from '@/components/ui/loader';
 import { MediaPreview, type MediaItem } from '@/components/ui/media-preview';
 import { AVATAR_BY_USER } from './chat-source';
+import { installMediaFallback } from './media-fallback';
 import { toggleVoice } from './voice-player';
 import { ChunkStore, loadManifest, type QceManifest } from './qce/chunk-store';
 
@@ -360,6 +361,7 @@ export default function Qce(): React.ReactElement {
       keyboard: true,
     });
     engineRef.current = engine;
+    const removeFallback = installMediaFallback(el);
     let refreshQueued = false;
     store.onChunkLoaded = () => {
       setLoadedChunks(store.loadedCount);
@@ -389,6 +391,7 @@ export default function Qce(): React.ReactElement {
 
     return () => {
       window.clearInterval(settingsTimer);
+      removeFallback();
       if (searchRef.current) searchRef.current.cancelled = true;
       engine.destroy();
       engineRef.current = null;

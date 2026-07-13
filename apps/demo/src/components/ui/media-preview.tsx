@@ -1,4 +1,4 @@
-import { DownloadIcon, XIcon } from 'lucide-react';
+import { DownloadIcon, ImageOffIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader } from '@/components/ui/loader';
@@ -39,6 +39,7 @@ export function MediaPreview({
   const [current, setCurrent] = React.useState<MediaItem | null>(null);
   const [visible, setVisible] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
   const [zoom, setZoom] = React.useState(1);
   const frameRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -46,6 +47,7 @@ export function MediaPreview({
     if (item) {
       setCurrent(item);
       setLoaded(false);
+      setFailed(false);
       setZoom(1);
       // Double rAF: guarantee the hidden state is painted before animating in.
       let raf2 = 0;
@@ -89,7 +91,7 @@ export function MediaPreview({
   // frame doesn't jump when the full image arrives.
   const ratio = current.width && current.height ? current.width / current.height : null;
   const frameStyle: React.CSSProperties | undefined =
-    !loaded && ratio
+    !loaded && !failed && ratio
       ? {
           width: `min(88vw, calc(74vh * ${ratio}), ${current.width}px)`,
           aspectRatio: `${ratio}`,
@@ -140,7 +142,17 @@ export function MediaPreview({
         }}
       >
         <div ref={frameRef} className="pointer-events-auto relative overflow-hidden rounded-xl" style={frameStyle}>
-          {!loaded && (
+          {failed && (
+            <div className="flex min-h-[220px] w-[min(420px,88vw)] flex-col items-center justify-center gap-3 bg-white/[0.06]">
+              <span className="flex size-9 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white/70">
+                <ImageOffIcon className="size-4" />
+              </span>
+              <span className="text-[13px] text-white/70">
+                {current.type === 'video' ? 'Video failed to load' : 'Image failed to load'}
+              </span>
+            </div>
+          )}
+          {!loaded && !failed && (
             <div className="absolute inset-0 flex items-center justify-center">
               {current.thumb ? (
                 <img
@@ -156,7 +168,7 @@ export function MediaPreview({
               <Loader size={22} className="relative text-white/80" />
             </div>
           )}
-          {current.type === 'video' ? (
+          {failed ? null : current.type === 'video' ? (
             <video
               key={current.src}
               src={current.src}
@@ -165,6 +177,7 @@ export function MediaPreview({
               autoPlay
               playsInline
               onLoadedData={() => setLoaded(true)}
+              onError={() => setFailed(true)}
               className={`max-h-[78vh] w-[min(960px,88vw)] bg-black object-contain transition-opacity duration-300 ${
                 loaded ? 'opacity-100' : 'opacity-0'
               }`}
@@ -177,6 +190,7 @@ export function MediaPreview({
               src={current.src}
               alt={current.name}
               onLoad={() => setLoaded(true)}
+              onError={() => setFailed(true)}
               draggable={false}
               style={{ transform: `scale(${zoom})`, transition: 'transform 160ms ease, opacity 300ms ease' }}
               className={`max-h-[74vh] max-w-[90vw] object-contain ${loaded ? 'opacity-100' : 'opacity-0'} ${
